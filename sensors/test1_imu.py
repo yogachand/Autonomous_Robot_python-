@@ -1,44 +1,103 @@
 #!/usr/bin/env python3
 
-# ── STEP 1: borrow the tools we need ──────────────────
-from sbp.client.drivers.network_drivers import TCPDriver  # ethernet connection tool
-from sbp.client import Handler, Framer                    # message reader tools
-from sbp.imu import MsgImuRaw, MsgImuAux                 # IMU message blueprints
-from time import time       
-import math         
-import json                      # stopwatch tool
+from sbp.client.drivers.network_drivers import TCPDriver
+from sbp.client import Handler, Framer
+from sbp.imu import MsgImuRaw
+from time import time
+import math
+import json
+# import csv
 
-# ── STEP 2: define where sensor is ────────────────────
 HOST = '195.37.48.233'
 PORT = 55555
-raw_count=4096 # sensitivity linear
-GYRO_SENSITIVITY = 131.2 
-g=9.8065
+raw_count = 4096
+GYRO_SENSITIVITY = 131.2
+g = 9.8065
 
-try:                                      
-    with TCPDriver(HOST, PORT) as driver: 
+start_time = time()
+previous_time = None
+
+velocity_x = 0.0
+velocity_y = 0.0
+velocity_z = 0.0
+
+distance_x = 0.0
+distance_y = 0.0
+distance_z = 0.0
+
+x = y = z = 0.0
+speed = 0.0
+distance = 0.0
+count = 0
+
+try:
+    with TCPDriver(HOST, PORT) as driver:
         with Handler(Framer(driver.read, driver.write)) as handler:
             print("initate connection")
-            start_time = time()           
 
             with open("imu_calibration.json", "r") as f:
                 calib = json.load(f)
 
-            # print(calib["x_bias"], calib["y_bias"], calib["z_bias"])
-            # print(calib["x_g_bias"], calib["y_g_bias"], calib["z_g_bias"])
+            # with open("imu_log.csv", "w", newline="") as csvfile:
+            #     writer = csv.writer(csvfile)
+            #     writer.writerow([
+            #         # "timestamp", "dt",
+            #         "acc_x_raw", "acc_y_raw", "acc_z_raw",
+            #         "acc_x", "acc_y", "acc_z",
+            #         "vel_x", "vel_y", "vel_z",
+            #         "dist_x", "dist_y", "dist_z",
+            #         "speed", "distance"
+            #     ])
 
-            for msg,metadata in handler:
-                if isinstance(msg,MsgImuRaw):
-                    # print("linear acceleration")
-                    # print(((msg.acc_x/raw_count)-calib["x_bias"])*g)
-                    # print(((msg.acc_y/raw_count)-calib["y_bias"])*g)
-                    # print(((msg.acc_z/raw_count)-calib["z_bias"])*g)
-                    print("angular velocity")
-                    print(((msg.gyr_x/GYRO_SENSITIVITY)-calib["x_g_bias"])*(math.pi/180))
-                    print(((msg.gyr_y/GYRO_SENSITIVITY)-calib["y_g_bias"])*(math.pi/180))
-                    print(((msg.gyr_z/GYRO_SENSITIVITY)-calib["z_g_bias"])*(math.pi/180))
-                    if time() - start_time >= 2:  
-                        break   
+            for msg, metadata in handler:
+                if not isinstance(msg, MsgImuRaw):
+                    continue
+
+                count += 1
+                if count >= 100:
+                    break
+
+                current_time = time()
+
+                if previous_time is None:
+                    previous_time = current_time
+                    continue
+
+                dt = current_time - previous_time
+                previous_time = current_time
+
+                x_raw = msg.acc_x
+                y_raw = msg.acc_y
+                z_raw = msg.acc_z
+
+                x = ((x_raw / raw_count)*g - calib["x_bias"]) 
+                y = ((y_raw / raw_count)*g- calib["y_bias"]) 
+                z = ((z_raw / raw_count)*g - calib["z_bias"])
+
+                velocity_x += x * dt
+                velocity_y += y * dt
+                velocity_z += z * dt
+
+                distance_x += velocity_x * dt
+                distance_y += velocity_y * dt
+                distance_z += velocity_z * dt
+
+                speed = math.sqrt(velocity_x**2 + velocity_y**2 + velocity_z**2)
+                distance = math.sqrt(distance_x**2 + distance_y**2 + distance_z**2)
+
+                # writer.writerow([
+                #     x_raw,    y_raw,    z_raw,
+                #     x,        y,        z,
+                #     velocity_x,    velocity_y,   velocity_z,
+                #     distance_x,    distance_y,    distance_z,
+                #     speed,     distance
+                # ])
+                # csvfile.flush()
+
+    print("acc:", x, y, z)
+    print("vel:", velocity_x, velocity_y, velocity_z)
+    print("dist:", distance_x, distance_y, distance_z)
+    print("speed:", speed, "distance:", distance)
 
 except KeyboardInterrupt:
     print("Stopped by user.")

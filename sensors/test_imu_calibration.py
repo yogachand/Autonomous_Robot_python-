@@ -32,7 +32,7 @@ try:                                      # try this, if fails go to except
             z_g_bias=0
             for msg, metadata in handler:
                 if isinstance(msg, MsgImuRaw):  # if you have the class imported
-                    # print(msg.acc_x, msg.acc_y, msg.acc_z)   # Accelerometer data
+                    # print(msg.acc_x, msg.accmport json_y, msg.acc_z)   # Accelerometer data
                     x_bias=msg.acc_x+x_bias
                     y_bias=msg.acc_y+y_bias
                     z_bias=msg.acc_z+z_bias
@@ -41,12 +41,12 @@ try:                                      # try this, if fails go to except
                     z_g_bias=msg.gyr_z+z_g_bias
 
                     count+=1
-                    if count >=1000:
+                    if count >=500:
                         break
-            print(count)
-            x_bias=(x_bias/(count*raw_count))
-            y_bias=(y_bias/(count*raw_count))
-            z_bias=(z_bias/(count*raw_count))
+
+            x_bias=(x_bias/(count*raw_count))*g
+            y_bias=(y_bias/(count*raw_count))*g
+            z_bias=(z_bias/(count*raw_count))*g
             x_g_bias=(x_g_bias/(count*GYRO_SENSITIVITY))
             y_g_bias=(y_g_bias/(count*GYRO_SENSITIVITY))
             z_g_bias=(z_g_bias/(count*GYRO_SENSITIVITY))
@@ -61,12 +61,13 @@ try:                                      # try this, if fails go to except
                     "z_g_bias": z_g_bias
                 }, f, indent=4)
 
-            # read back
+            # # read back
             with open("imu_calibration.json", "r") as f:
                 calib = json.load(f)
 
-            print(calib["x_bias"], calib["y_bias"], calib["z_bias"])
-            print(calib["x_g_bias"], calib["y_g_bias"], calib["z_g_bias"])
+            print(x_bias,y_bias,z_bias)
+            print(x_g_bias,y_g_bias,z_g_bias)
+            # print(calib["x_g_bias"], calib["y_g_bias"], calib["z_g_bias"])
 
             # for msg,metadata in handler:
             #     if isinstance(msg,MsgImuRaw):
