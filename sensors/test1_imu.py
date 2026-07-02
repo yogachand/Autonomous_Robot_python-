@@ -53,9 +53,9 @@ try:
                 if not isinstance(msg, MsgImuRaw):
                     continue
 
-                count += 1
-                if count >= 100:
-                    break
+                # count += 1
+                # if count >= 100:
+                #     break
 
                 current_time = time()
 
@@ -69,11 +69,31 @@ try:
                 x_raw = msg.acc_x
                 y_raw = msg.acc_y
                 z_raw = msg.acc_z
-
+                print(msg.acc_x)
                 x = ((x_raw / raw_count)*g - calib["x_bias"]) 
                 y = ((y_raw / raw_count)*g- calib["y_bias"]) 
                 z = ((z_raw / raw_count)*g - calib["z_bias"])
-
+                if abs(x)< calib["deadzone_x_a"]:
+                    x=0
+                else:
+                    if x>0:
+                        x-=calib["deadzone_x_a"]
+                    else:
+                        x+=calib["deadzone_x_a"]
+                if abs(y)< calib["deadzone_y_a"]:
+                    y=0
+                else:
+                    if y>0:
+                        y-=calib["deadzone_y_a"]
+                    else:
+                        y+=calib["deadzone_y_a"]
+                if abs(z)< calib["deadzone_z_a"]:
+                    z=0
+                else:
+                    if z>0:
+                        z-=calib["deadzone_z_a"]
+                    else:
+                        z+=calib["deadzone_z_a"]
                 velocity_x += x * dt
                 velocity_y += y * dt
                 velocity_z += z * dt
@@ -81,6 +101,8 @@ try:
                 distance_x += velocity_x * dt
                 distance_y += velocity_y * dt
                 distance_z += velocity_z * dt
+
+                print(dt)
 
                 speed = math.sqrt(velocity_x**2 + velocity_y**2 + velocity_z**2)
                 distance = math.sqrt(distance_x**2 + distance_y**2 + distance_z**2)
@@ -94,10 +116,10 @@ try:
                 # ])
                 # csvfile.flush()
 
-    print("acc:", x, y, z)
-    print("vel:", velocity_x, velocity_y, velocity_z)
-    print("dist:", distance_x, distance_y, distance_z)
-    print("speed:", speed, "distance:", distance)
+                print("acc:", x, y, z)
+                print("vel:", velocity_x, velocity_y, velocity_z)
+                print("dist:", distance_x, distance_y, distance_z)
+                print("speed:", speed, "distance:", distance)
 
 except KeyboardInterrupt:
     print("Stopped by user.")
